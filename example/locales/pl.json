@@ -1,0 +1,42 @@
+{
+  "common": {
+    "welcome": "Witamy w naszej aplikacji",
+    "loading": "Ładowanie...",
+    "error": "Wystąpił błąd"
+  },
+  "home": {
+    "title": "Strona główna",
+    "description": "To jest główna strona naszej aplikacji",
+    "features": {
+      "title": "Funkcje",
+      "list": {
+        "item1": "Wsparcie dla internacjonalizacji",
+        "item2": "Łatwa konfiguracja",
+        "item3": "Tłumaczenie automatyczne"
+      }
+    }
+  },
+  "about": {
+    "title": "O nas",
+    "description": "Dowiedz się więcej o naszym zespole i misji",
+    "mission": "Naszą misją jest zapewnienie najlepszych doświadczeń użytkownika"
+  },
+  "contact": {
+    "title": "Skontaktuj się z nami",
+    "form": {
+      "name": "Twoje Imię",
+      "email": "Twój e-mail",
+      "message": "Twoja wiadomość",
+      "submit": "Wyślij wiadomość"
+    },
+    "success": "Twoja wiadomość została wysłana pomyślnie"
+  },
+  "footer": {
+    "copyright": "© 2023 Nasza Firma. Wszelkie prawa zastrzeżone.",
+    "links": {
+      "privacy": "Polityka Prywatności",
+      "terms": "Warunki świadczenia usług",
+      "help": "Centrum Pomocy"
+    }
+  }
+}

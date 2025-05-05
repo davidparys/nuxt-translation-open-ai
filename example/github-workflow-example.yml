@@ -1,0 +1,43 @@
+name: Auto Translate i18n Files
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/locales/**/en.json'  # Trigger only when English files change
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      
+      # Method 1: Using GitHub Action directly
+      - name: Translate i18n files (GitHub Action)
+        uses: yourusername/vue-i18n-translator@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          source-locale: en
+          target-locales: fr,es,de,pl,ja
+          openai-model: gpt-3.5-turbo
+      
+      # Method 2: Using npx for more flexibility
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Translate i18n files (npx)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          npx vue-i18n-translator --source en --target fr,es,de --model gpt-3.5-turbo
+      
+      - name: Commit and Push Changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore: update translations"
+          branch: ${{ github.ref }}
+          file_pattern: '**/locales/**/*.json' 

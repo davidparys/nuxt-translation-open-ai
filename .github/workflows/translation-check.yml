@@ -1,0 +1,140 @@
+name: Translation Check
+
+on:
+  pull_request:
+    branches: 
+      - main
+    paths:
+      - "**locales**/*.json"
+
+jobs:
+  check-translations:
+    name: Check and update translations
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Required to get all files including changes
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v40
+        with:
+          files: "**locales**/*.json"
+
+      - name: Check if translation files have changed
+        id: check-changes
+        run: |
+          if [ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]; then
+            echo "Translation files have been changed"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "changed_files=${{ steps.changed-files.outputs.all_changed_files }}" >> $GITHUB_OUTPUT
+          else
+            echo "No translation files changed"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create translation branch
+        if: steps.check-changes.outputs.has_changes == 'true'
+        id: create-branch
+        run: |
+          # Get source branch name
+          SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+          
+          # Create new branch name with timestamp
+          TRANSLATION_BRANCH="translations/${SOURCE_BRANCH}-$(date +%s)"
+          echo "translation_branch=${TRANSLATION_BRANCH}" >> $GITHUB_OUTPUT
+          
+          # Create and checkout the new branch
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git checkout -b ${TRANSLATION_BRANCH}
+          
+          echo "Created branch: ${TRANSLATION_BRANCH}"
+
+      - name: Run translation update
+        if: steps.check-changes.outputs.has_changes == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          echo "Processing translation updates for the following files:"
+          echo "${{ steps.check-changes.outputs.changed_files }}"
+          
+          # Install the deepl-translator-vue-i18n package if it's not part of the project already
+          if [ ! -d "node_modules/deepl-translator-vue-i18n" ]; then
+            npm install deepl-translator-vue-i18n
+          fi
+          
+          # Run the translation tool
+          npx deepl-translator
+
+      - name: Commit and push changes
+        if: steps.check-changes.outputs.has_changes == 'true'
+        id: commit-changes
+        run: |
+          # Check if there are any changes to commit
+          if [[ -z $(git status --porcelain) ]]; then
+            echo "No translation changes to commit"
+            echo "has_translation_changes=false" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "Committing translation changes"
+            git add -A
+            git commit -m "Update translations for locales files"
+            git push --set-upstream origin ${{ steps.create-branch.outputs.translation_branch }}
+            echo "has_translation_changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create PR for translations
+        if: steps.commit-changes.outputs.has_translation_changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: ${{ github.event.pull_request.head.ref }}
+          branch: ${{ steps.create-branch.outputs.translation_branch }}
+          title: "Update translations for PR #${{ github.event.pull_request.number }}"
+          body: |
+            ### Translation Updates
+            
+            This PR adds automatic translations for localization files modified in PR #${{ github.event.pull_request.number }}.
+            
+            Updated files:
+            ```
+            ${{ steps.changed-files.outputs.all_changed_files }}
+            ```
+            
+            Please review these translations before merging.
+          labels: translations
+          draft: false
+
+      - name: Comment on original PR
+        if: steps.check-changes.outputs.has_changes == 'true'
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: |
+            ### Translation Update
+            
+            I've detected changes to localization files in this PR.
+            
+            ${{ steps.commit-changes.outputs.has_translation_changes == 'true' && format('A new PR with updated translations has been created: {0}', github.event.pull_request.head.repo.html_url + '/pull/' + github.run_id) || 'Translations are already up-to-date.' }}
+            
+            Changed files:
+            ```
+            ${{ steps.changed-files.outputs.changed_files }}
+            ```
+          comment_tag: translation-check 

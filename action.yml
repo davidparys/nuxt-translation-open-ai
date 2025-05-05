@@ -1,0 +1,77 @@
+name: 'Vue i18n Translator'
+description: 'Translate Vue i18n JSON files using OpenAI'
+author: 'Your Name'
+
+inputs:
+  openai-api-key:
+    description: 'OpenAI API key'
+    required: true
+  root-directory:
+    description: 'Root directory of the Nuxt project'
+    required: false
+    default: '.'
+  source-locale:
+    description: 'Source language code (overrides Nuxt default locale)'
+    required: false
+  target-locales:
+    description: 'Comma-separated list of target language codes (overrides Nuxt locales)'
+    required: false
+  openai-model:
+    description: 'OpenAI model to use for translation'
+    required: false
+    default: 'gpt-3.5-turbo'
+  formality-level:
+    description: 'Formality level for translations (formal/informal)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+    
+    - name: Install vue-i18n-translator
+      shell: bash
+      run: npm install -g vue-i18n-translator
+    
+    - name: Run Translation
+      shell: bash
+      env:
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        ROOT_DIRECTORY: ${{ inputs.root-directory }}
+        DEFAULT_LOCALE: ${{ inputs.source-locale }}
+        TARGET_LOCALES: ${{ inputs.target-locales }}
+        OPENAI_MODEL: ${{ inputs.openai-model }}
+        FORMALITY_LEVEL: ${{ inputs.formality-level }}
+      run: |
+        # Build command with available inputs
+        CMD="vue-i18n-translator"
+        
+        if [ -n "$ROOT_DIRECTORY" ]; then
+          CMD="$CMD --root $ROOT_DIRECTORY"
+        fi
+        
+        if [ -n "$DEFAULT_LOCALE" ]; then
+          CMD="$CMD --source $DEFAULT_LOCALE"
+        fi
+        
+        if [ -n "$TARGET_LOCALES" ]; then
+          CMD="$CMD --target $TARGET_LOCALES"
+        fi
+        
+        if [ -n "$OPENAI_MODEL" ]; then
+          CMD="$CMD --model $OPENAI_MODEL"
+        fi
+        
+        if [ -n "$FORMALITY_LEVEL" ]; then
+          CMD="$CMD --formality $FORMALITY_LEVEL"
+        fi
+        
+        # Run the command
+        $CMD
+
+branding:
+  icon: 'globe'
+  color: 'blue' 

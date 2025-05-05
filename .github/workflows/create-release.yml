@@ -1,0 +1,130 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version increment type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      custom_version:
+        description: 'Or specify exact version (overrides version_type if provided)'
+        required: false
+        type: string
+      release_notes:
+        description: 'Release notes'
+        required: false
+        type: string
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Configure Git
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # If no custom version, use npm version to bump according to type
+      - name: Bump version (automated)
+        if: ${{ inputs.custom_version == '' }}
+        id: bump-version
+        run: |
+          # Update version in package.json
+          npm version ${{ inputs.version_type }} --no-git-tag-version
+          
+          # Get the new version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "new_version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Bumped version to ${VERSION}"
+
+      # If custom version provided, set it directly
+      - name: Set custom version
+        if: ${{ inputs.custom_version != '' }}
+        id: set-custom-version
+        run: |
+          # Update version in package.json
+          npm version ${{ inputs.custom_version }} --no-git-tag-version --allow-same-version
+          
+          # Get the new version
+          VERSION=$(node -p "require('./package.json').version")
+          echo "new_version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Set version to ${VERSION}"
+
+      # Determine the version from whichever step ran
+      - name: Set version
+        id: version
+        run: |
+          if [ "${{ steps.bump-version.outputs.new_version }}" != "" ]; then
+            echo "value=${{ steps.bump-version.outputs.new_version }}" >> $GITHUB_OUTPUT
+          else
+            echo "value=${{ steps.set-custom-version.outputs.new_version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git add package.json
+          git commit -m "Bump version to ${{ steps.version.outputs.value }}"
+          git push origin main
+
+      - name: Create Git tag
+        run: |
+          git tag -a v${{ steps.version.outputs.value }} -m "Release ${{ steps.version.outputs.value }}"
+          git push origin v${{ steps.version.outputs.value }}
+
+      - name: Generate changelog
+        id: changelog
+        if: ${{ inputs.release_notes == '' }}
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 --match "v[0-9]*" HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            # If no previous tag, get all commits
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" HEAD)
+          else
+            # Otherwise, get commits since the previous tag
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREV_TAG..HEAD)
+          fi
+          
+          # Store the changelog
+          echo "CHANGELOG<<EOF" >> $GITHUB_ENV
+          echo "$CHANGELOG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: Release v${{ steps.version.outputs.value }}
+          body: ${{ inputs.release_notes != '' && inputs.release_notes || env.CHANGELOG }}
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "## Release created successfully! :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version:** v${{ steps.version.outputs.value }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Type:** ${{ inputs.version_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The existing publish workflow will now automatically publish this version to npm." >> $GITHUB_STEP_SUMMARY 

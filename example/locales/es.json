@@ -1,0 +1,42 @@
+{
+  "common": {
+    "welcome": "[ES] Welcome to our application",
+    "loading": "[ES] Loading...",
+    "error": "[ES] An error occurred"
+  },
+  "home": {
+    "title": "[ES] Home Page",
+    "description": "[ES] This is the main page of our application",
+    "features": {
+      "title": "[ES] Features",
+      "list": {
+        "item1": "[ES] Internationalization support",
+        "item2": "[ES] Easy configuration",
+        "item3": "[ES] Automatic translation"
+      }
+    }
+  },
+  "about": {
+    "title": "[ES] About Us",
+    "description": "[ES] Learn more about our team and mission",
+    "mission": "[ES] Our mission is to provide the best user experience"
+  },
+  "contact": {
+    "title": "[ES] Contact Us",
+    "form": {
+      "name": "[ES] Your Name",
+      "email": "[ES] Your Email",
+      "message": "[ES] Your Message",
+      "submit": "[ES] Send Message"
+    },
+    "success": "[ES] Your message has been sent successfully"
+  },
+  "footer": {
+    "copyright": "[ES] © 2023 Our Company. All rights reserved.",
+    "links": {
+      "privacy": "[ES] Privacy Policy",
+      "terms": "[ES] Terms of Service",
+      "help": "[ES] Help Center"
+    }
+  }
+}

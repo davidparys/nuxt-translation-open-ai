@@ -1,0 +1,42 @@
+{
+  "common": {
+    "welcome": "Bienvenue dans notre application",
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue"
+  },
+  "home": {
+    "title": "Page d'accueil",
+    "description": "Ceci est la page principale de notre application",
+    "features": {
+      "title": "Fonctionnalités",
+      "list": {
+        "item1": "Support à l'internationalisation",
+        "item2": "Configuration facile",
+        "item3": "Traduction automatique"
+      }
+    }
+  },
+  "about": {
+    "title": "À propos de nous",
+    "description": "En savoir plus sur notre équipe et notre mission",
+    "mission": "Notre mission est de fournir la meilleure expérience utilisateur"
+  },
+  "contact": {
+    "title": "Nous contacter",
+    "form": {
+      "name": "Votre nom",
+      "email": "Votre e-mail",
+      "message": "Votre message",
+      "submit": "Envoyer le message"
+    },
+    "success": "Votre message a été envoyé avec succès"
+  },
+  "footer": {
+    "copyright": "© 2023 Notre Entreprise. Tous droits réservés.",
+    "links": {
+      "privacy": "Politique de confidentialité",
+      "terms": "Conditions d'utilisation",
+      "help": "Centre d'aide"
+    }
+  }
+}

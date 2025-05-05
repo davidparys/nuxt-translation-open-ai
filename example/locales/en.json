@@ -1,0 +1,42 @@
+{
+    "common": {
+        "welcome": "Welcome to our application",
+        "loading": "Loading...",
+        "error": "An error occurred"
+    },
+    "home": {
+        "title": "Home Page",
+        "description": "This is the main page of our application",
+        "features": {
+            "title": "Features",
+            "list": {
+                "item1": "Internationalization support",
+                "item2": "Easy configuration",
+                "item3": "Automatic translation"
+            }
+        }
+    },
+    "about": {
+        "title": "About Us",
+        "description": "Learn more about our team and mission",
+        "mission": "Our mission is to provide the best user experience"
+    },
+    "contact": {
+        "title": "Contact Us",
+        "form": {
+            "name": "Your Name",
+            "email": "Your Email",
+            "message": "Your Message",
+            "submit": "Send Message"
+        },
+        "success": "Your message has been sent successfully"
+    },
+    "footer": {
+        "copyright": "© 2023 Our Company. All rights reserved.",
+        "links": {
+            "privacy": "Privacy Policy",
+            "terms": "Terms of Service",
+            "help": "Help Center"
+        }
+    }
+}
