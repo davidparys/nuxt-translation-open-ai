@@ -38,5 +38,12 @@
             "terms": "Terms of Service",
             "help": "Help Center"
         }
+    },
+    "menu": {
+        "add": "Add",
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "save": "Save"
     }
 }
