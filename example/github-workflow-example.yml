@@ -16,7 +16,7 @@ jobs:
       
       # Method 1: Using GitHub Action directly
       - name: Translate i18n files (GitHub Action)
-        uses: yourusername/vue-i18n-translator@v1
+        uses: davidparys/nuxt-translation-open-ai-deepl@v1.0.0
         with:
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           source-locale: en
