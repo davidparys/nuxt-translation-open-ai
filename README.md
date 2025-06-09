@@ -21,6 +21,10 @@ Automatically translates your json files with i18n configuration from your Nuxt 
 ### As a global CLI tool
 
 ```bash
+npx vue-i18n-translator
+```
+
+```bash
 npm install -g vue-i18n-translator
 ```
 
