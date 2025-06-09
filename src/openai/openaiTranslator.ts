@@ -77,7 +77,7 @@ export async function translateContent(
         const prompt = `Translate the following text from ${sourceLocale} to ${targetLocale}. 
 ${formalityInstruction}
 Output only the translation without any additional text or explanations:
-
+Any text found in between curly braces {} should not be translated. Keep them as is.
 ${text}`;
 
         const response = await client.chat.completions.create({

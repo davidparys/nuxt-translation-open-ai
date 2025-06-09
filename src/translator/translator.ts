@@ -80,17 +80,11 @@ export async function translateProject(options: TranslationOptions): Promise<voi
             const localeCode = extractLocaleCode(targetLocale);
             const spinner = ora(`Translating to ${targetLocale} (${localeCode})...`).start();
 
-            // Determine target file path
+            // Determine target file path using the exact file name from nuxt.config.js
             let targetFilePath: string;
 
             if (nuxtConfig.i18n.lazy) {
                 targetFilePath = findLocaleFile(fullLangDir, localeCode, nuxtConfig.i18n);
-                // If file doesn't exist, create it based on source locale file naming pattern
-                if (!fs.existsSync(targetFilePath)) {
-                    const sourceFileName = path.basename(sourceFilePath);
-                    const targetFileName = sourceFileName.replace(sourceLocale, localeCode);
-                    targetFilePath = path.resolve(fullLangDir, targetFileName);
-                }
             } else {
                 // Always use the exact locale code for the file name
                 targetFilePath = path.resolve(fullLangDir, `${localeCode}.json`);
@@ -285,7 +279,7 @@ function extractLocaleCode(locale: string): string {
 }
 
 /**
- * Finds the file path for a specific locale
+ * Finds the file path for a specific locale using the exact file name from nuxt.config.js
  * @param langDir Language directory
  * @param locale Locale code
  * @param i18nConfig i18n configuration
@@ -307,6 +301,7 @@ function findLocaleFile(langDir: string, locale: string, i18nConfig: NuxtConfig[
         });
 
         if (typeof localeObj === 'object' && localeObj.file) {
+            // Use the exact file name specified in the config
             return path.resolve(langDir, localeObj.file);
         }
     } else if (typeof i18nConfig.locales === 'object' && !Array.isArray(i18nConfig.locales)) {

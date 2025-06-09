@@ -46,22 +46,57 @@ try {
   
   // Look for locales array or object
   let locales = [];
-  const localesArrayMatch = fileContent.match(/locales[\\s]*:[\\s]*(\\[[^\\]]+\\])/);
-  const localesObjectMatch = fileContent.match(/locales[\\s]*:[\\s]*({[^}]+})/);
+  const localesArrayMatch = fileContent.match(/locales[\\s]*:[\\s]*(\\[[\\s\\S]*?\\])/);
+  const localesObjectMatch = fileContent.match(/locales[\\s]*:[\\s]*({[\\s\\S]*?})/);
   
   if (localesArrayMatch) {
-    // Try to extract locale codes from the array
+    // Try to extract locale objects from the array
     const localesStr = localesArrayMatch[1];
-    const codeMatches = localesStr.match(/['"]([^'"]+)['"]/g);
-    if (codeMatches) {
-      locales = codeMatches.map(m => m.replace(/['"]/g, ''));
+    
+    // Look for locale objects with code and file properties
+    const localeObjectMatches = localesStr.match(/{[^}]*}/g);
+    if (localeObjectMatches) {
+      locales = localeObjectMatches.map(objStr => {
+        const codeMatch = objStr.match(/code[\\s]*:[\\s]*['"]([^'"]+)['"]/);
+        const fileMatch = objStr.match(/file[\\s]*:[\\s]*['"]([^'"]+)['"]/);
+        const nameMatch = objStr.match(/name[\\s]*:[\\s]*['"]([^'"]+)['"]/);
+        
+        if (codeMatch) {
+          return {
+            code: codeMatch[1],
+            file: fileMatch ? fileMatch[1] : codeMatch[1] + '.json',
+            name: nameMatch ? nameMatch[1] : codeMatch[1]
+          };
+        }
+        return null;
+      }).filter(Boolean);
+    } else {
+      // Fallback: try to extract simple string codes
+      const codeMatches = localesStr.match(/['"]([^'"]+)['"]/g);
+      if (codeMatches) {
+        locales = codeMatches.map(m => {
+          const code = m.replace(/['"]/g, '');
+          return {
+            code: code,
+            file: code + '.json',
+            name: code
+          };
+        });
+      }
     }
   } else if (localesObjectMatch) {
     // Try to extract locale codes from object keys
     const localesStr = localesObjectMatch[1];
     const codeMatches = localesStr.match(/['"]([^'"]+)['"]/g);
     if (codeMatches) {
-      locales = codeMatches.map(m => m.replace(/['"]/g, ''));
+      locales = codeMatches.map(m => {
+        const code = m.replace(/['"]/g, '');
+        return {
+          code: code,
+          file: code + '.json',
+          name: code
+        };
+      });
     }
   }
   
@@ -84,8 +119,15 @@ try {
           // Look for JSON files that might be locale files
           const localeFiles = files.filter(file => file.endsWith('.json'));
           if (localeFiles.length > 0) {
-            // Extract locale codes from filenames (remove .json extension)
-            locales = localeFiles.map(file => file.replace(/\\.json$/, ''));
+            // Create locale objects from filenames
+            locales = localeFiles.map(file => {
+              const code = file.replace(/\\.json$/, '');
+              return {
+                code: code,
+                file: file,
+                name: code
+              };
+            });
             break;
           }
         } catch (error) {
