@@ -1,6 +1,6 @@
 {
     "name": "vue-i18n-translator",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Translate Vue i18n JSON files using OpenAI with support for Nuxt projects",
     "type": "module",
     "private": false,
