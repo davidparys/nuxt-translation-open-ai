@@ -1,0 +1,21 @@
+{
+  "navigation": {
+    "home": "[FR] Home",
+    "about": "[FR] About",
+    "contact": "[FR] Contact",
+    "services": "[FR] Services"
+  },
+  "buttons": {
+    "submit": "[FR] Submit",
+    "cancel": "[FR] Cancel",
+    "save": "[FR] Save",
+    "delete": "[FR] Delete",
+    "edit": "[FR] Edit"
+  },
+  "messages": {
+    "success": "[FR] Operation completed successfully",
+    "error": "[FR] An error occurred",
+    "loading": "[FR] Loading...",
+    "noData": "[FR] No data available"
+  }
+}

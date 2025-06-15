@@ -1,0 +1,26 @@
+{
+    "page": {
+        "title": "About Us",
+        "subtitle": "Learn more about our company and mission"
+    },
+    "company": {
+        "history": {
+            "title": "Our History",
+            "content": "Founded in 2020, we have been dedicated to providing excellent services to our customers."
+        },
+        "mission": {
+            "title": "Our Mission",
+            "content": "To deliver innovative solutions that make a positive impact on people's lives."
+        },
+        "values": {
+            "title": "Our Values",
+            "integrity": "Integrity - We act with honesty and transparency",
+            "innovation": "Innovation - We embrace new ideas and technologies",
+            "excellence": "Excellence - We strive for the highest quality in everything we do"
+        }
+    },
+    "team": {
+        "title": "Meet Our Team",
+        "description": "Our talented team of professionals is here to serve you"
+    }
+}

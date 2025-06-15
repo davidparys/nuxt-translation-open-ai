@@ -42,6 +42,7 @@ export interface NuxtI18nConfig {
     locales?: string[] | Record<string, any> | Array<{
         code: string;
         file?: string;
+        files?: string[];
         [key: string]: any;
     }>;
     langDir?: string;

@@ -1,0 +1,21 @@
+{
+  "navigation": {
+    "home": "[ES] Home",
+    "about": "[ES] About",
+    "contact": "[ES] Contact",
+    "services": "[ES] Services"
+  },
+  "buttons": {
+    "submit": "[ES] Submit",
+    "cancel": "[ES] Cancel",
+    "save": "[ES] Save",
+    "delete": "[ES] Delete",
+    "edit": "[ES] Edit"
+  },
+  "messages": {
+    "success": "[ES] Operation completed successfully",
+    "error": "[ES] An error occurred",
+    "loading": "[ES] Loading...",
+    "noData": "[ES] No data available"
+  }
+}
