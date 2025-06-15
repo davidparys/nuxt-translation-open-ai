@@ -28,35 +28,27 @@ export async function translateProject(options: TranslationOptions): Promise<voi
             throw new Error(`Language directory not found at ${fullLangDir}`);
         }
 
-        // Get source language file
+        // Get source language file(s)
         const sourceLocale = options.sourceLocale;
         if (!sourceLocale) {
             throw new Error('Source locale not specified');
         }
 
-        // Determine source file path based on lazy loading configuration
-        let sourceFilePath: string;
+        // Get source files for the locale
+        const sourceFiles = getLocaleFiles(fullLangDir, sourceLocale, nuxtConfig.i18n);
 
-        if (nuxtConfig.i18n.lazy) {
-            // In lazy loading mode, each locale has its own file
-            sourceFilePath = findLocaleFile(fullLangDir, sourceLocale, nuxtConfig.i18n);
-        } else {
-            // In non-lazy mode, all locales are in a single file named by locale code
-            sourceFilePath = path.resolve(fullLangDir, `${sourceLocale}.json`);
+        if (sourceFiles.length === 0) {
+            throw new Error(`No source language files found for locale ${sourceLocale}`);
         }
 
-        if (!fs.existsSync(sourceFilePath)) {
-            throw new Error(`Source language file not found at ${sourceFilePath}`);
-        }
-
-        // Read source file
-        const sourceContent = await fs.readJson(sourceFilePath);
+        // Read and merge all source files
+        const sourceContent = await readAndMergeFiles(sourceFiles);
 
         // Flatten source content for easier processing
         const flattenedSource = flattenObject(sourceContent);
         const totalKeys = Object.keys(flattenedSource).length;
 
-        console.log(chalk.blue(`Found ${totalKeys} keys in source language file`));
+        console.log(chalk.blue(`Found ${totalKeys} keys across ${sourceFiles.length} source file(s)`));
 
         // Process each target language
         const targetLocales = options.targetLocales || [];
@@ -80,24 +72,17 @@ export async function translateProject(options: TranslationOptions): Promise<voi
             const localeCode = extractLocaleCode(targetLocale);
             const spinner = ora(`Translating to ${targetLocale} (${localeCode})...`).start();
 
-            // Determine target file path using the exact file name from nuxt.config.js
-            let targetFilePath: string;
+            // Get target files for the locale
+            const targetFiles = getLocaleFiles(fullLangDir, localeCode, nuxtConfig.i18n);
 
-            if (nuxtConfig.i18n.lazy) {
-                targetFilePath = findLocaleFile(fullLangDir, localeCode, nuxtConfig.i18n);
-            } else {
-                // Always use the exact locale code for the file name
-                targetFilePath = path.resolve(fullLangDir, `${localeCode}.json`);
-            }
-
-            // Read target file if it exists
+            // Read existing translations from all target files
             let existingTranslations: Record<string, string> = {};
 
-            if (fs.existsSync(targetFilePath)) {
+            if (targetFiles.length > 0) {
                 try {
-                    const targetContent = await fs.readJson(targetFilePath);
+                    const targetContent = await readAndMergeFiles(targetFiles);
                     existingTranslations = flattenObject(targetContent);
-                    spinner.text = `Found existing translations for ${localeCode}, identifying missing keys...`;
+                    spinner.text = `Found existing translations for ${localeCode} across ${targetFiles.length} file(s), identifying missing keys...`;
                 } catch (error) {
                     spinner.warn(`Error reading existing ${localeCode} translations, starting fresh`);
                 }
@@ -162,15 +147,14 @@ export async function translateProject(options: TranslationOptions): Promise<voi
                 // Unflatten the translated entries
                 const finalTranslations = unflattenObject(translatedEntries);
 
-                // Save to file
-                await fs.ensureDir(path.dirname(targetFilePath));
-                await fs.writeJson(targetFilePath, finalTranslations, { spaces: 2 });
+                // Save to files
+                await saveTranslationsToFiles(finalTranslations, targetFiles, fullLangDir, localeCode, nuxtConfig.i18n);
 
                 if (interrupted) {
-                    spinner.succeed(`Translation interrupted, saved progress (${Object.keys(newTranslations).length}/${keysToTranslate.length} keys) to ${targetFilePath}`);
+                    spinner.succeed(`Translation interrupted, saved progress (${Object.keys(newTranslations).length}/${keysToTranslate.length} keys) to ${targetFiles.length} file(s)`);
                     process.exit(0);
                 } else {
-                    spinner.succeed(`Translated ${Object.keys(newTranslations).length} keys to ${localeCode} and saved to ${targetFilePath}`);
+                    spinner.succeed(`Translated ${Object.keys(newTranslations).length} keys to ${localeCode} and saved to ${targetFiles.length} file(s)`);
                 }
             } catch (error) {
                 spinner.fail(`Error during batch translation: ${(error as Error).message}`);
@@ -212,15 +196,14 @@ export async function translateProject(options: TranslationOptions): Promise<voi
                 // Unflatten the translated entries
                 const finalTranslations = unflattenObject(translatedEntries);
 
-                // Save to file
-                await fs.ensureDir(path.dirname(targetFilePath));
-                await fs.writeJson(targetFilePath, finalTranslations, { spaces: 2 });
+                // Save to files
+                await saveTranslationsToFiles(finalTranslations, targetFiles, fullLangDir, localeCode, nuxtConfig.i18n);
 
                 if (interrupted) {
-                    spinner.succeed(`Translation interrupted, saved progress (${completedCount}/${keysToTranslate.length} keys) to ${targetFilePath}`);
+                    spinner.succeed(`Translation interrupted, saved progress (${completedCount}/${keysToTranslate.length} keys) to ${targetFiles.length} file(s)`);
                     process.exit(0);
                 } else {
-                    spinner.succeed(`Translated ${completedCount} keys to ${localeCode} and saved to ${targetFilePath}`);
+                    spinner.succeed(`Translated ${completedCount} keys to ${localeCode} and saved to ${targetFiles.length} file(s)`);
                 }
             }
 
@@ -279,15 +262,16 @@ function extractLocaleCode(locale: string): string {
 }
 
 /**
- * Finds the file path for a specific locale using the exact file name from nuxt.config.js
+ * Gets all file paths for a specific locale, supporting both single file and multiple files configuration
  * @param langDir Language directory
  * @param locale Locale code
  * @param i18nConfig i18n configuration
- * @returns Path to the locale file
+ * @returns Array of file paths for the locale
  */
-function findLocaleFile(langDir: string, locale: string, i18nConfig: NuxtConfig['i18n']): string {
+function getLocaleFiles(langDir: string, locale: string, i18nConfig: NuxtConfig['i18n']): string[] {
     if (!i18nConfig || !i18nConfig.locales) {
-        return path.resolve(langDir, `${locale}.json`);
+        const defaultFile = path.resolve(langDir, `${locale}.json`);
+        return fs.existsSync(defaultFile) ? [defaultFile] : [];
     }
 
     // Handle different formats of locales configuration
@@ -300,18 +284,178 @@ function findLocaleFile(langDir: string, locale: string, i18nConfig: NuxtConfig[
             return item.code === locale;
         });
 
-        if (typeof localeObj === 'object' && localeObj.file) {
-            // Use the exact file name specified in the config
-            return path.resolve(langDir, localeObj.file);
+        if (typeof localeObj === 'object') {
+            // Check for files array first (multiple files)
+            if (localeObj.files && Array.isArray(localeObj.files)) {
+                return localeObj.files
+                    .map(file => path.resolve(langDir, file))
+                    .filter(filePath => fs.existsSync(filePath));
+            }
+            // Fallback to single file
+            if (localeObj.file) {
+                const filePath = path.resolve(langDir, localeObj.file);
+                return fs.existsSync(filePath) ? [filePath] : [];
+            }
         }
     } else if (typeof i18nConfig.locales === 'object' && !Array.isArray(i18nConfig.locales)) {
         // Handle object format
         const localeObj = i18nConfig.locales[locale];
-        if (localeObj && localeObj.file) {
-            return path.resolve(langDir, localeObj.file);
+        if (localeObj) {
+            if (localeObj.files && Array.isArray(localeObj.files)) {
+                return localeObj.files
+                    .map(file => path.resolve(langDir, file))
+                    .filter(filePath => fs.existsSync(filePath));
+            }
+            if (localeObj.file) {
+                const filePath = path.resolve(langDir, localeObj.file);
+                return fs.existsSync(filePath) ? [filePath] : [];
+            }
         }
     }
 
     // Default to locale code as filename
-    return path.resolve(langDir, `${locale}.json`);
+    const defaultFile = path.resolve(langDir, `${locale}.json`);
+    return fs.existsSync(defaultFile) ? [defaultFile] : [];
+}
+
+/**
+ * Reads and merges multiple JSON files into a single object
+ * @param filePaths Array of file paths to read
+ * @returns Merged JSON object
+ */
+async function readAndMergeFiles(filePaths: string[]): Promise<Record<string, any>> {
+    const mergedContent: Record<string, any> = {};
+
+    for (const filePath of filePaths) {
+        try {
+            const fileContent = await fs.readJson(filePath);
+            // Use the filename (without extension) as a namespace to avoid key conflicts
+            const fileName = path.basename(filePath, '.json');
+
+            // If there's only one file, don't add namespace
+            if (filePaths.length === 1) {
+                Object.assign(mergedContent, fileContent);
+            } else {
+                // Add namespace to avoid conflicts between files
+                mergedContent[fileName] = fileContent;
+            }
+        } catch (error) {
+            console.warn(`Warning: Could not read file ${filePath}: ${(error as Error).message}`);
+        }
+    }
+
+    return mergedContent;
+}
+
+/**
+ * Saves translations to multiple files, distributing content based on the original file structure
+ * @param translations The complete translations object
+ * @param targetFiles Array of target file paths
+ * @param langDir Language directory
+ * @param locale Locale code
+ * @param i18nConfig i18n configuration
+ */
+async function saveTranslationsToFiles(
+    translations: Record<string, any>,
+    targetFiles: string[],
+    langDir: string,
+    locale: string,
+    i18nConfig: NuxtConfig['i18n']
+): Promise<void> {
+    // If we have multiple files, we need to distribute the translations
+    if (targetFiles.length > 1) {
+        // For multiple files, the translations should be namespaced by filename
+        for (const filePath of targetFiles) {
+            const fileName = path.basename(filePath, '.json');
+            const fileTranslations = translations[fileName] || {};
+
+            await fs.ensureDir(path.dirname(filePath));
+            await fs.writeJson(filePath, fileTranslations, { spaces: 2 });
+        }
+    } else if (targetFiles.length === 1) {
+        // Single file - save all translations
+        await fs.ensureDir(path.dirname(targetFiles[0]));
+        await fs.writeJson(targetFiles[0], translations, { spaces: 2 });
+    } else {
+        // No existing files - create new files based on configuration
+        const localeFiles = getLocaleFilesFromConfig(langDir, locale, i18nConfig);
+
+        if (localeFiles.length > 0) {
+            // Create files based on configuration
+            for (const filePath of localeFiles) {
+                const fileName = path.basename(filePath, '.json');
+                const fileTranslations = translations[fileName] || {};
+
+                await fs.ensureDir(path.dirname(filePath));
+                await fs.writeJson(filePath, fileTranslations, { spaces: 2 });
+            }
+        } else {
+            // Fallback to single file
+            const defaultFile = path.resolve(langDir, `${locale}.json`);
+            await fs.ensureDir(path.dirname(defaultFile));
+            await fs.writeJson(defaultFile, translations, { spaces: 2 });
+        }
+    }
+}
+
+/**
+ * Gets the expected file paths for a locale based on configuration (even if files don't exist yet)
+ * @param langDir Language directory
+ * @param locale Locale code
+ * @param i18nConfig i18n configuration
+ * @returns Array of expected file paths
+ */
+function getLocaleFilesFromConfig(langDir: string, locale: string, i18nConfig: NuxtConfig['i18n']): string[] {
+    if (!i18nConfig || !i18nConfig.locales) {
+        return [path.resolve(langDir, `${locale}.json`)];
+    }
+
+    // Handle different formats of locales configuration
+    if (Array.isArray(i18nConfig.locales)) {
+        // Find the locale object in the array
+        const localeObj = i18nConfig.locales.find(item => {
+            if (typeof item === 'string') {
+                return item === locale;
+            }
+            return item.code === locale;
+        });
+
+        if (typeof localeObj === 'object') {
+            // Check for files array first (multiple files)
+            if (localeObj.files && Array.isArray(localeObj.files)) {
+                return localeObj.files.map(file => path.resolve(langDir, file));
+            }
+            // Fallback to single file
+            if (localeObj.file) {
+                return [path.resolve(langDir, localeObj.file)];
+            }
+        }
+    } else if (typeof i18nConfig.locales === 'object' && !Array.isArray(i18nConfig.locales)) {
+        // Handle object format
+        const localeObj = i18nConfig.locales[locale];
+        if (localeObj) {
+            if (localeObj.files && Array.isArray(localeObj.files)) {
+                return localeObj.files.map(file => path.resolve(langDir, file));
+            }
+            if (localeObj.file) {
+                return [path.resolve(langDir, localeObj.file)];
+            }
+        }
+    }
+
+    // Default to locale code as filename
+    return [path.resolve(langDir, `${locale}.json`)];
+}
+
+/**
+ * Finds the file path for a specific locale using the exact file name from nuxt.config.js
+ * @param langDir Language directory
+ * @param locale Locale code
+ * @param i18nConfig i18n configuration
+ * @returns Path to the locale file
+ * @deprecated Use getLocaleFiles instead for multiple file support
+ */
+function findLocaleFile(langDir: string, locale: string, i18nConfig: NuxtConfig['i18n']): string {
+    const files = getLocaleFiles(langDir, locale, i18nConfig);
+    return files.length > 0 ? files[0] : path.resolve(langDir, `${locale}.json`);
 } 

@@ -1,0 +1,22 @@
+{
+  "hero": {
+    "title": "[FR] Welcome to Our Website",
+    "subtitle": "[FR] Discover amazing features and services",
+    "cta": "[FR] Get Started"
+  },
+  "features": {
+    "title": "[FR] Our Features",
+    "feature1": {
+      "title": "[FR] Fast Performance",
+      "description": "[FR] Lightning-fast loading times for the best user experience"
+    },
+    "feature2": {
+      "title": "[FR] Secure & Reliable",
+      "description": "[FR] Your data is safe with our advanced security measures"
+    },
+    "feature3": {
+      "title": "[FR] 24/7 Support",
+      "description": "[FR] Our team is here to help you whenever you need assistance"
+    }
+  }
+}

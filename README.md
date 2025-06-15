@@ -15,112 +15,159 @@ Automatically translates your json files with i18n configuration from your Nuxt 
 - Handles interruptions gracefully with partial saving
 - Skips existing translations in target files
 - Can be used as a CLI tool or GitHub Action
+-Multiple Files Per Locale Supports both single file and multiple files per locale configurations
+
 
 ## Installation
-
-### As a global CLI tool
-
-```bash
-npx vue-i18n-translator
-```
 
 ```bash
 npm install -g vue-i18n-translator
 ```
 
-### For use in a project
-
-```bash
-npm install --save-dev vue-i18n-translator
-```
-
 ## Usage
 
-### CLI Usage
+### Basic Usage
 
 ```bash
-# Using npx (no installation required)
-npx vue-i18n-translator
-
-# Or if installed globally
-vue-i18n-translator
-
-# Basic usage (auto-detects from nuxt.config.ts in current directory)
-vue-i18n-translator
-
-# Specify root directory
-vue-i18n-translator --root ./my-nuxt-project
-
-# Specify source language
-vue-i18n-translator --source en
-
-# Specify target languages
-vue-i18n-translator --target fr,es,de
-
-# Specify OpenAI model
-vue-i18n-translator --model gpt-4
-
-# Specify formality level (useful for languages like Polish, German, etc.)
-vue-i18n-translator --formality formal
+vue-i18n-translator --root /path/to/nuxt/project --source en --target es,fr,de
 ```
 
-### GitHub Action Usage
+### With OpenAI API Key
 
-Create a workflow file in your repository (e.g., `.github/workflows/translate.yml`):
-
-```yaml
-name: Translate i18n files
-
-on:
-  push:
-    branches: [ main ]
-    paths:
-      - '**/locales/**/*.json'
-
-jobs:
-  translate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Translate i18n files
-        uses: yourusername/vue-i18n-translator@v1
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          source-locale: en
-          target-locales: fr,es,de
-          openai-model: gpt-3.5-turbo
-          
-      - name: Commit and push changes
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: "Update translations"
+```bash
+OPENAI_API_KEY=your_api_key vue-i18n-translator --root /path/to/nuxt/project --source en --target es
 ```
 
-## Configuration
+### Mock Mode (for testing)
 
-You can configure the tool using command-line options, environment variables, or GitHub Action inputs:
+```bash
+vue-i18n-translator --root /path/to/nuxt/project --source en --target es --mock
+```
 
-| CLI Option | Env Variable | Action Input | Description |
-|--------|-------------|--------------|-------------|
-| `--root` | `ROOT_DIRECTORY` | `root-directory` | Root directory of the Nuxt project |
-| `--source` | `DEFAULT_LOCALE` | `source-locale` | Source language code |
-| `--target` | `TARGET_LOCALES` | `target-locales` | Comma-separated list of target language codes |
-| `--model` | `OPENAI_MODEL` | `openai-model` | OpenAI model to use for translation |
-| `--formality` | `FORMALITY_LEVEL` | `formality-level` | Formality level for translations (formal/informal) |
+## Configuration Support
+
+### Single File Per Locale
+
+The tool supports the traditional single file per locale configuration:
+
+```typescript
+// nuxt.config.ts
+export default {
+  i18n: {
+    defaultLocale: 'en',
+    langDir: 'locales',
+    locales: [
+      {
+        code: 'en',
+        file: 'en.json',
+        name: 'English'
+      },
+      {
+        code: 'es',
+        file: 'es.json',
+        name: 'Español'
+      }
+    ]
+  }
+}
+```
+
+### Multiple Files Per Locale
+
+**NEW**: The tool now supports multiple files per locale using the `files` array:
+
+```typescript
+// nuxt.config.ts
+export default {
+  i18n: {
+    defaultLocale: 'en',
+    langDir: 'locales',
+    locales: [
+      {
+        code: 'en',
+        iso: 'en-US',
+        name: 'English',
+        files: ['en/common.json', 'en/home.json', 'en/about.json']
+      },
+      {
+        code: 'es',
+        iso: 'es-ES',
+        name: 'Español',
+        files: ['es/common.json', 'es/home.json', 'es/about.json']
+      }
+    ]
+  }
+}
+```
+
+This configuration allows you to organize your translations into multiple files per locale, which is especially useful for large projects where you want to separate translations by page or feature.
+
+### Directory Structure Example
+
+For the multiple files configuration above, your directory structure would look like:
+
+```
+locales/
+├── en/
+│   ├── common.json
+│   ├── home.json
+│   └── about.json
+└── es/
+    ├── common.json
+    ├── home.json
+    └── about.json
+```
+
+## Command Line Options
+
+- `--root, -r`: Root directory of the Nuxt project (required)
+- `--source, -s`: Source locale code (e.g., 'en')
+- `--target, -t`: Target locale codes, comma-separated (e.g., 'es,fr,de')
+- `--model, -m`: OpenAI model to use (default: 'gpt-4.1-nano')
+- `--mock`: Use mock translations for testing (no API calls)
+- `--formality`: Translation formality level ('formal' or 'informal')
 
 ## Environment Variables
 
-Create a `.env` file in your project root:
+- `OPENAI_API_KEY`: Your OpenAI API key (required unless using --mock)
 
+## How It Works
+
+1. **Configuration Parsing**: Reads your `nuxt.config.ts` to extract i18n settings
+2. **Source File Detection**: Locates source language files (single or multiple per locale)
+3. **Content Merging**: For multiple files, merges content while preserving structure
+4. **Translation Processing**: Translates missing keys using OpenAI API
+5. **File Distribution**: Saves translations back to appropriate files maintaining the original structure
+6. **Incremental Updates**: Preserves existing translations and only translates new content
+
+## Examples
+
+### Single File Example
+
+```bash
+# Translate from English to Spanish and French
+vue-i18n-translator --root ./my-nuxt-app --source en --target es,fr
 ```
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_MODEL=gpt-3.5-turbo
-DEFAULT_LOCALE=en
-TARGET_LOCALES=fr,es,de
-ROOT_DIRECTORY=./my-nuxt-project
-FORMALITY_LEVEL=formal
+
+### Multiple Files Example
+
+```bash
+# Translate a project with multiple files per locale
+vue-i18n-translator --root ./my-large-app --source en --target es,fr,de --mock
 ```
+
+### With Custom Model
+
+```bash
+# Use a specific OpenAI model
+vue-i18n-translator --root ./my-app --source en --target es --model gpt-4
+```
+
+## Requirements
+
+- Node.js 18+
+- Nuxt.js project with @nuxtjs/i18n
+- OpenAI API key (unless using mock mode)
 
 ## License
 
