@@ -46,32 +46,75 @@ try {
   
   // Look for locales array or object
   let locales = [];
-  const localesArrayMatch = fileContent.match(/locales[\\s]*:[\\s]*(\\[[\\s\\S]*?\\])/);
-  const localesObjectMatch = fileContent.match(/locales[\\s]*:[\\s]*({[\\s\\S]*?})/);
   
-  if (localesArrayMatch) {
-    // Try to extract locale objects from the array
-    const localesStr = localesArrayMatch[1];
+  // Find the start of the locales array
+  const localesStartMatch = fileContent.match(/locales[\\s]*:[\\s]*\\[/);
+  if (localesStartMatch) {
+    const startIndex = localesStartMatch.index + localesStartMatch[0].length - 1; // Include the opening bracket
     
-    // Look for locale objects with code and file properties
-    const localeObjectMatches = localesStr.match(/{[^}]*}/g);
-    if (localeObjectMatches) {
-      locales = localeObjectMatches.map(objStr => {
-        const codeMatch = objStr.match(/code[\\s]*:[\\s]*['"]([^'"]+)['"]/);
-        const fileMatch = objStr.match(/file[\\s]*:[\\s]*['"]([^'"]+)['"]/);
-        const nameMatch = objStr.match(/name[\\s]*:[\\s]*['"]([^'"]+)['"]/);
-        
-        if (codeMatch) {
-          return {
-            code: codeMatch[1],
-            file: fileMatch ? fileMatch[1] : codeMatch[1] + '.json',
-            name: nameMatch ? nameMatch[1] : codeMatch[1]
-          };
+    // Find the matching closing bracket
+    let depth = 0;
+    let endIndex = -1;
+    let inString = false;
+    let stringChar = '';
+    
+    for (let i = startIndex; i < fileContent.length; i++) {
+      const char = fileContent[i];
+      const prevChar = i > 0 ? fileContent[i - 1] : '';
+      
+      // Handle string boundaries
+      if ((char === '"' || char === "'") && prevChar !== '\\\\') {
+        if (!inString) {
+          inString = true;
+          stringChar = char;
+        } else if (char === stringChar) {
+          inString = false;
+          stringChar = '';
         }
-        return null;
-      }).filter(Boolean);
-    } else {
-      // Fallback: try to extract simple string codes
+      }
+      
+      if (!inString) {
+        if (char === '[') {
+          depth++;
+        } else if (char === ']') {
+          depth--;
+          if (depth === 0) {
+            endIndex = i;
+            break;
+          }
+        }
+      }
+    }
+    
+    if (endIndex !== -1) {
+      const localesStr = fileContent.substring(startIndex, endIndex + 1);
+      
+      // Use a more sophisticated approach to parse locale objects
+      // This handles nested arrays and objects properly
+      const localeObjects = parseLocaleObjects(localesStr);
+      if (localeObjects.length > 0) {
+        locales = localeObjects;
+          } else {
+        // Fallback: try to extract simple string codes
+        const codeMatches = localesStr.match(/['"]([^'"]+)['"]/g);
+        if (codeMatches) {
+          locales = codeMatches.map(m => {
+            const code = m.replace(/['"]/g, '');
+            return {
+              code: code,
+              file: code + '.json',
+              name: code
+            };
+          });
+        }
+      }
+    }
+  } else {
+    // Try to find locales as an object
+    const localesObjectMatch = fileContent.match(/locales[\\s]*:[\\s]*({[\\s\\S]*?})/);
+    if (localesObjectMatch) {
+      // Try to extract locale codes from object keys
+      const localesStr = localesObjectMatch[1];
       const codeMatches = localesStr.match(/['"]([^'"]+)['"]/g);
       if (codeMatches) {
         locales = codeMatches.map(m => {
@@ -83,20 +126,6 @@ try {
           };
         });
       }
-    }
-  } else if (localesObjectMatch) {
-    // Try to extract locale codes from object keys
-    const localesStr = localesObjectMatch[1];
-    const codeMatches = localesStr.match(/['"]([^'"]+)['"]/g);
-    if (codeMatches) {
-      locales = codeMatches.map(m => {
-        const code = m.replace(/['"]/g, '');
-        return {
-          code: code,
-          file: code + '.json',
-          name: code
-        };
-      });
     }
   }
   
@@ -191,6 +220,93 @@ try {
 } catch (error) {
   console.error(error);
   process.exit(1);
+}
+
+// Helper function to parse locale objects with proper bracket matching
+function parseLocaleObjects(localesStr) {
+  const locales = [];
+  let depth = 0;
+  let currentObj = '';
+  let inString = false;
+  let stringChar = '';
+  
+  for (let i = 0; i < localesStr.length; i++) {
+    const char = localesStr[i];
+    const prevChar = i > 0 ? localesStr[i - 1] : '';
+    
+    // Handle string boundaries
+    if ((char === '"' || char === "'") && prevChar !== '\\\\') {
+      if (!inString) {
+        inString = true;
+        stringChar = char;
+      } else if (char === stringChar) {
+        inString = false;
+        stringChar = '';
+      }
+    }
+    
+    if (!inString) {
+      if (char === '{') {
+        if (depth === 0) {
+          currentObj = '';
+        }
+        depth++;
+      } else if (char === '}') {
+        depth--;
+        if (depth === 0) {
+          // We've found a complete object
+          currentObj += char;
+          const localeObj = parseLocaleObject(currentObj);
+          if (localeObj) {
+            locales.push(localeObj);
+          }
+          currentObj = '';
+          continue;
+        }
+      }
+    }
+    
+    if (depth > 0) {
+      currentObj += char;
+    }
+  }
+  
+  return locales;
+}
+
+// Helper function to parse a single locale object
+function parseLocaleObject(objStr) {
+  const codeMatch = objStr.match(/code[\\s]*:[\\s]*['"]([^'"]+)['"]/);
+  const fileMatch = objStr.match(/file[\\s]*:[\\s]*['"]([^'"]+)['"]/);
+  const nameMatch = objStr.match(/name[\\s]*:[\\s]*['"]([^'"]+)['"]/);
+  
+  // Look for files array
+  const filesMatch = objStr.match(/files[\\s]*:[\\s]*(\\[[\\s\\S]*?\\])/);
+  let files = [];
+  if (filesMatch) {
+    const filesStr = filesMatch[1];
+    const fileMatches = filesStr.match(/['"]([^'"]+)['"]/g);
+    if (fileMatches) {
+      files = fileMatches.map(m => m.replace(/['"]/g, ''));
+    }
+  }
+  
+  if (codeMatch) {
+    const localeObj = {
+      code: codeMatch[1],
+      name: nameMatch ? nameMatch[1] : codeMatch[1]
+    };
+    
+    // Add files array if present, otherwise use single file
+    if (files.length > 0) {
+      localeObj.files = files;
+    } else {
+      localeObj.file = fileMatch ? fileMatch[1] : codeMatch[1] + '.json';
+    }
+    
+    return localeObj;
+  }
+  return null;
 }
 `;
 
