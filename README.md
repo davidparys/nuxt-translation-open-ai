@@ -127,6 +127,16 @@ locales/
 - `--mock`: Use mock translations for testing (no API calls)
 - `--formality`: Translation formality level ('formal' or 'informal')
 
+These options can also be set as environment variables or GitHub Action inputs.
+
+| CLI Option | Env Variable | Action Input | 
+|--------|-------------|--------------|
+| `--root` | `ROOT_DIRECTORY` | `root-directory`|
+| `--source` | `DEFAULT_LOCALE` | `source-locale` |
+| `--target` | `TARGET_LOCALES` | `target-locales` |
+| `--model` | `OPENAI_MODEL` | `openai-model`|
+| `--formality` | `FORMALITY_LEVEL` | `formality-level` |
+
 ## Environment Variables
 
 - `OPENAI_API_KEY`: Your OpenAI API key (required unless using --mock)
@@ -139,6 +149,7 @@ locales/
 4. **Translation Processing**: Translates missing keys using OpenAI API
 5. **File Distribution**: Saves translations back to appropriate files maintaining the original structure
 6. **Incremental Updates**: Preserves existing translations and only translates new content
+
 
 ## Examples
 
@@ -156,13 +167,46 @@ vue-i18n-translator --root ./my-nuxt-app --source en --target es,fr
 vue-i18n-translator --root ./my-large-app --source en --target es,fr,de --mock
 ```
 
-### With Custom Model
+### With Custom Model (defaults to gpt-3.5-turbo)
 
 ```bash
 # Use a specific OpenAI model
 vue-i18n-translator --root ./my-app --source en --target es --model gpt-4
 ```
 
+
+### GitHub Action Usage
+
+Create a workflow file in your repository (e.g., `.github/workflows/translate.yml`):
+
+```yaml
+name: Translate i18n files
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**/locales/**/*.json'
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Translate i18n files
+        uses: yourusername/vue-i18n-translator@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          source-locale: en
+          target-locales: fr,es,de
+          openai-model: gpt-3.5-turbo
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Update translations"
+```
 ## Requirements
 
 - Node.js 18+
